@@ -56,7 +56,7 @@ export function readCachedProjectGraph(
     // Check if another process is currently building the graph
     const lockPath = join(workspaceDataDirectory, 'project-graph.lock');
     const lock = new FileLock(lockPath);
-    
+
     // Check the lock status (updates lock.locked property)
     lock.check();
 
