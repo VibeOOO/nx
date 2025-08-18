@@ -56,6 +56,9 @@ export function readCachedProjectGraph(
     // Check if another process is currently building the graph
     const lockPath = join(workspaceDataDirectory, 'project-graph.lock');
     const lock = new FileLock(lockPath);
+    
+    // Check the lock status (updates lock.locked property)
+    lock.check();
 
     // If the lock is held by another process, wait for it
     if (lock.locked) {
@@ -84,6 +87,10 @@ export function readCachedProjectGraph(
           `[readCachedProjectGraph] Failed to wait for lock: ${e.message}`
         );
       }
+    } else {
+      // Lock file exists but is not held - might be stale
+      // Try reading cache one more time in case it was just created
+      projectGraphCache = readProjectGraphCache(minimumComputedAt);
     }
   }
 
