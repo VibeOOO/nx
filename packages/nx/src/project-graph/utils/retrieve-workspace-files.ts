@@ -1,9 +1,10 @@
 import { performance } from 'perf_hooks';
 import { ProjectConfiguration } from '../../config/workspace-json-project-json';
-import {
-  NX_ANGULAR_JSON_PLUGIN_NAME,
-  shouldMergeAngularProjects,
-} from '../../adapter/angular-json';
+// Lazy load angular-json to avoid module resolution issues for non-Angular projects
+// import {
+//   NX_ANGULAR_JSON_PLUGIN_NAME,
+//   shouldMergeAngularProjects,
+// } from '../../adapter/angular-json';
 import { NxJsonConfiguration, readNxJson } from '../../config/nx-json';
 import {
   ConfigurationResult,
@@ -88,15 +89,26 @@ export async function retrieveProjectConfigurationsWithAngularProjects(
 ): Promise<ConfigurationResult> {
   const pluginsToLoad = nxJson?.plugins ?? [];
 
-  if (
-    shouldMergeAngularProjects(workspaceRoot, true) &&
-    !pluginsToLoad.some(
-      (p) =>
-        p === NX_ANGULAR_JSON_PLUGIN_NAME ||
-        (typeof p === 'object' && p.plugin === NX_ANGULAR_JSON_PLUGIN_NAME)
-    )
-  ) {
-    pluginsToLoad.push(join(__dirname, '../../adapter/angular-json'));
+  // Lazy load angular-json module only when needed
+  try {
+    const angularJsonModule = require('../../adapter/angular-json');
+    const { shouldMergeAngularProjects, NX_ANGULAR_JSON_PLUGIN_NAME } =
+      angularJsonModule;
+
+    if (
+      shouldMergeAngularProjects(workspaceRoot, true) &&
+      !pluginsToLoad.some(
+        (p) =>
+          p === NX_ANGULAR_JSON_PLUGIN_NAME ||
+          (typeof p === 'object' && p.plugin === NX_ANGULAR_JSON_PLUGIN_NAME)
+      )
+    ) {
+      pluginsToLoad.push(join(__dirname, '../../adapter/angular-json'));
+    }
+  } catch (e) {
+    // If angular-json module is not available (e.g., during project graph rebuilds),
+    // skip Angular project merging. This is fine for non-Angular projects.
+    // For Angular projects, the module will be available when actually needed.
   }
 
   const plugins = await getPlugins(workspaceRoot);
